@@ -10,7 +10,7 @@ namespace fs = boost::filesystem;
 using namespace std;
 
 // local includes
-#include "kwaymergesort.hpp"
+#include "head.hpp"
 
 struct fileinfo {
 

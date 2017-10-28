@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <openssl/md5.h>
 #include <libgen.h> //for basename()
 using namespace std;
 
@@ -23,6 +24,36 @@ bool isRegularFile(const string& filename);
 // Additionally: removes any extension the basename might have.
 std::string stl_basename(const std::string& path);
 
+template <class T>
+class internalhash
+{
+public:
+  string hash;
+  T data;
+
+  friend ostream& operator<<(ostream &os, const internalhash &b)
+  {
+      os  << b.hash  << "\t"
+          << b.data;
+      return os;
+  }
+  friend istream& operator>>(istream &is, internalhash &b)
+  {
+      is  >> b.hash;
+      getline( is,b.data,'\n');
+      return is;
+  }
+  bool operator < (const internalhash &a) const
+  {
+      // recall that priority queues try to sort from
+      // highest to lowest. thus, we need to negate.
+      if(a.data.size==data.size)
+      {
+        return (data.path.compare(a.data.path));
+      }
+      return false;
+  }
+};
 
 template <class T>
 class MERGE_DATA {
@@ -312,13 +343,10 @@ void KwayMergeSort<T>::Merge() {
           curmultiple=past.data.size;
           *_out << past.data << endl;
         }
-        //else if()
-        //*_out << lowest.data << endl;
         past=lowest;
         // remove this record from the queue
         outQueue.pop();
         // add the next line from the lowest stream (above) to the queue
-        // as long as it's not EOF.
         *(lowest.stream) >> line;
         if (*(lowest.stream))
             outQueue.push( MERGE_DATA<T>(line, lowest.stream, _compareFunction) );
@@ -367,6 +395,7 @@ void KwayMergeSort<T>::CloseTempFiles() {
     for (size_t i=0; i < _vTempFileNames.size(); ++i) {
         remove(_vTempFileNames[i].c_str());  // remove = UNIX "rm"
     }
+    _runCounter=0;
 }
 
 
