@@ -57,7 +57,7 @@ public:
       // highest to lowest. thus, we need to negate.
       if(a.data.size==data.size)
       {
-        return (data.path.compare(a.data.path));
+        return (hash.compare(a.hash));
       }
       return false;
   }
@@ -68,12 +68,18 @@ void internalhash_calculator(string filename,int size)
 {
   cout<<"enter thread size:"<<size<<" filename: "<<filename<<endl;
   ifstream *file;
+  stringstream ss2;
+  ss2<<"hash"<<filename;
+  ofstream *output2;
+  output2 = new ofstream(ss2.str(), ios::out);// making new file and empty previous copy
+  output2->close();
+  delete output2;
 
   if (isRegularFile(filename) == true) {
     file = new ifstream(filename.c_str(), ios::in);
     vector<internalhash<T>> lineBuffer;
     T line;
-
+    unsigned long int cursize(0);
     while(*file>>line)
     {
       cout<<line.size<<"\t";
@@ -81,11 +87,29 @@ void internalhash_calculator(string filename,int size)
       int file_descript;
       if(line.size==0)
       {
-        cout<<"?";
         item.hash="0";
         item.data=line;
         lineBuffer.push_back(item);
         continue;
+      }
+      if(line.size!=cursize)
+      {
+        if(!lineBuffer.empty())
+        {
+          sort(lineBuffer.begin(), lineBuffer.end());
+          stringstream ss;
+          ss<<"hash"<<filename;
+          ofstream *output;
+          output = new ofstream(ss.str(), ios::out|ios_base::app|ios::ate);
+          // write the contents of the current buffer to the temp file
+          for (size_t i = 0; i < lineBuffer.size(); ++i) {
+              *output << lineBuffer[i] << endl;
+          }
+          lineBuffer.clear();
+          output->close();
+          delete output;
+          cursize=line.size;
+                  }
       }
       //stringstream ss;
       //ss<<'"'<<line.path.c_str()<<'"';
@@ -94,7 +118,6 @@ void internalhash_calculator(string filename,int size)
 
       if(file_descript < 0)
       {
-        cout<<"!";
         //stringstream item;
         //item<<"0"<<line;
         //internalhash<T> item;
@@ -104,7 +127,6 @@ void internalhash_calculator(string filename,int size)
         close(file_descript);
         continue;
       }
-      cout<<"#";
       unsigned long file_size;
       if(size==0)
       file_size=line.size;
@@ -114,7 +136,7 @@ void internalhash_calculator(string filename,int size)
 
 
 
-      char* file_buffer = static_cast<char*>(mmap(0, file_size, PROT_READ, MAP_SHARED, file_descript, 0));
+      char* file_buffer = static_cast<char*>(mmap(0, file_size, PROT_READ, MAP_PRIVATE, file_descript, 0));
       MD5((unsigned char*) file_buffer, file_size, result);
       munmap(file_buffer, file_size);
       sout2<<std::hex<<std::setfill('0');
@@ -131,11 +153,12 @@ void internalhash_calculator(string filename,int size)
     stringstream ss;
     ss<<"hash"<<filename;
     ofstream *output;
-    output = new ofstream(ss.str(), ios::out);
+    output = new ofstream(ss.str(), ios::out|ios_base::app|ios::ate);
     // write the contents of the current buffer to the temp file
     for (size_t i = 0; i < lineBuffer.size(); ++i) {
         *output << lineBuffer[i] << endl;
     }
+    lineBuffer.clear();
     output->close();
     delete output;
 
