@@ -14,6 +14,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <map>
 #include <openssl/md5.h>
 #include <libgen.h> //for basename()
 using namespace std;
@@ -120,6 +121,7 @@ private:
     bool (*_compareFunction)(const T &a, const T &b);
     string _tempPath;
     vector<string>    _vTempFileNames;
+    map<unsigned long int,string>    _vHashFileNames;
     vector<ifstream*>  _vTempFiles;
     unsigned int _maxBufferSize;
     unsigned int _runCounter;
@@ -129,7 +131,7 @@ private:
     // drives the creation of sorted sub-files stored on disk.
     void DivideAndSort();
     void Merge();
-    void WriteToTempFile(const vector<T> &lines);
+    void WriteToTempFile(const vector<T> &lines, const string name);
     void OpenTempFiles();
     void CloseTempFiles();
 };
@@ -155,7 +157,14 @@ KwayMergeSort<T>::KwayMergeSort (const string &inFile,
     , _maxBufferSize(maxBufferSize)
     , _runCounter(0)
     , _count(0)
-{}
+{
+  _vHashFileNames[10000]="smallest";//10kb
+  _vHashFileNames[1000000]="small";//1mb
+  _vHashFileNames[40000000]="moderate";//30mb
+  _vHashFileNames[700000000]="huge";//700mb
+  _vHashFileNames[100000000000]="humungous";//100gb
+  //_vHashFileNames[]=;
+}
 
 // constructor
 // destructor
@@ -216,7 +225,7 @@ void KwayMergeSort<T>::DivideAndSort() {
             else
                 sort(lineBuffer.begin(), lineBuffer.end());
             // write the sorted data to a temp file
-            WriteToTempFile(lineBuffer);
+            WriteToTempFile(lineBuffer,"null");
             // clear the buffer for the next run
             lineBuffer.clear();
             _tempFileUsed = true;
@@ -239,7 +248,7 @@ cout<<"total lines: "<<_count<<endl;
                 sort(lineBuffer.begin(), lineBuffer.end());
             // write the sorted data to a temp file
             //WriteToTempFile(lineBuffer);
-            WriteToTempFile(lineBuffer);
+            WriteToTempFile(lineBuffer,"null");
         }
         // otherwise, the entire file fit in the memory given,
         // so we can just dump to the output.
@@ -271,14 +280,23 @@ cout<<"total lines: "<<_count<<endl;
 
 
 template <class T>
-void KwayMergeSort<T>::WriteToTempFile(const vector<T> &lineBuffer) {
+void KwayMergeSort<T>::WriteToTempFile(const vector<T> &lineBuffer,const string name) {
     stringstream tempFileSS;
-    if (_tempPath.size() == 0)
+    string tempFileName;
+    if((name.compare("null")==0))
+    {
+      if (_tempPath.size() == 0)
         tempFileSS << _inFile << "." << _runCounter;
     else
         tempFileSS << _tempPath << "/" << stl_basename(_inFile) << "." << _runCounter;
-    string tempFileName = tempFileSS.str();
-
+    tempFileName = tempFileSS.str();
+    ++_runCounter;
+    _vTempFileNames.push_back(tempFileName);
+    }
+    else
+    {
+      tempFileName = name;
+    }
     ofstream *output;
     output = new ofstream(tempFileName.c_str(), ios::out);
     // write the contents of the current buffer to the temp file
@@ -287,10 +305,10 @@ void KwayMergeSort<T>::WriteToTempFile(const vector<T> &lineBuffer) {
     }
 
     // update the tempFile number and add the tempFile to the list of tempFiles
-    ++_runCounter;
     output->close();
     delete output;
-    _vTempFileNames.push_back(tempFileName);
+
+
 }
 
 
@@ -324,37 +342,67 @@ void KwayMergeSort<T>::Merge() {
 
     if(outQueue.size()>1)
     {
-      MERGE_DATA<T> past = outQueue.top();
-      //*_out << lowest.data << endl;
-      unsigned long int curmultiple(0);
-      outQueue.pop();
-      *(past.stream) >> line;
-      if (*(past.stream))
-          outQueue.push( MERGE_DATA<T>(line, past.stream, _compareFunction) );
-
-          cout<<"past or first info: "<<past.data<<endl;
-
-    while (outQueue.empty() == false) {
-        // grab the lowest element, print it, then ditch it.
-        MERGE_DATA<T> lowest = outQueue.top();
-        // write the entry from the top of the queue
-        if((lowest.data.size==past.data.size) || (past.data.size==curmultiple))
-        {
-          curmultiple=past.data.size;
-          *_out << past.data << endl;
-        }
-        past=lowest;
-        // remove this record from the queue
-        outQueue.pop();
-        // add the next line from the lowest stream (above) to the queue
-        *(lowest.stream) >> line;
-        if (*(lowest.stream))
-            outQueue.push( MERGE_DATA<T>(line, lowest.stream, _compareFunction) );
-    }
-    if(past.data.size==curmultiple)
+      std::map<unsigned long int, string>::iterator itr = _vHashFileNames.begin();
+    unsigned long int curmultiple(0);
+    vector<T> lineBuffer;
+    while (itr != _vHashFileNames.end())
     {
-      *_out << past.data<<endl;
+      if(outQueue.empty())
+      {
+        itr++;
+        continue;
+      }
+      MERGE_DATA<T> past = outQueue.top();
+
+      outQueue.pop();
+      if(past.data.size<itr->first)
+      {
+        lineBuffer.push_back(past.data);
+        if (*(past.stream))
+          outQueue.push( MERGE_DATA<T>(line, past.stream, _compareFunction) );
+        //cout<<"past or first info: "<<past.data<<endl;
+        while (outQueue.empty() == false) {
+            bool insert=false;
+            MERGE_DATA<T> lowest = outQueue.top();
+            if(lowest.data.size>itr->first)
+            {
+              break;
+            }
+            if((lowest.data.size==past.data.size) || (past.data.size==curmultiple))
+            {
+              curmultiple=past.data.size;
+              lineBuffer.push_back(past.data);//*_out << past.data << endl;
+              insert=true;
+            }
+            past=lowest;
+            outQueue.pop();// remove this record from the queue
+            *(lowest.stream) >> line;// add the next line from the lowest stream (above) to the queue
+            if (*(lowest.stream))
+                outQueue.push( MERGE_DATA<T>(line, lowest.stream, _compareFunction) );
+
+        }
+        if((outQueue.empty()) && past.data.size==curmultiple)  ///check if insert is required
+          { cout<<"last one:)"<<endl;
+            lineBuffer.push_back(past.data);
+            WriteToTempFile(lineBuffer, itr->second);
+            lineBuffer.clear();
+            }
+        }
+
+      else
+      {
+        outQueue.push(past);
+        if(!lineBuffer.empty())
+        {
+          WriteToTempFile(lineBuffer, itr->second);
+          lineBuffer.clear();
+        }
+        itr++;
+        continue;
+      }
+
     }
+
   }
     // clean up the temp files.
     CloseTempFiles();
