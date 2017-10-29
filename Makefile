@@ -1,5 +1,5 @@
 CFLAGS = -Wall -Wextra -std=gnu++1z
-LIBS = -lboost_system -lboost_filesystem -lcrypto
+LIBS = -lboost_system -lboost_filesystem -lcrypto -pthread
 
 all: findup
 

@@ -1,6 +1,8 @@
 #ifndef KWAYMERGESORT_H
 #define KWAYMERGESORT_H
-
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
 #include <iostream>
 #include <fstream>
 #include <algorithm>
@@ -16,14 +18,19 @@
 #include <unistd.h>
 #include <map>
 #include <openssl/md5.h>
+#include<thread>
+#include<iomanip>
+#include <fcntl.h>
 #include <libgen.h> //for basename()
 using namespace std;
 
+unsigned char result[MD5_DIGEST_LENGTH];
 bool isRegularFile(const string& filename);
 // STLized version of basename()
 // (because POSIX basename() modifies the input string pointer)
 // Additionally: removes any extension the basename might have.
 std::string stl_basename(const std::string& path);
+
 
 template <class T>
 class internalhash
@@ -56,6 +63,85 @@ public:
   }
 };
 
+template <class T>
+void internalhash_calculator(string filename,int size)
+{
+  cout<<"enter thread size:"<<size<<" filename: "<<filename<<endl;
+  ifstream *file;
+
+  if (isRegularFile(filename) == true) {
+    file = new ifstream(filename.c_str(), ios::in);
+    vector<internalhash<T>> lineBuffer;
+    T line;
+
+    while(*file>>line)
+    {
+      cout<<line.size<<"\t";
+      internalhash<T> item;
+      int file_descript;
+      if(line.size==0)
+      {
+        cout<<"?";
+        item.hash="0";
+        item.data=line;
+        lineBuffer.push_back(item);
+        continue;
+      }
+      //stringstream ss;
+      //ss<<'"'<<line.path.c_str()<<'"';
+      //cout<<ss.str().c_str()<<" "<<endl;
+      file_descript = open(line.path.c_str(), O_RDONLY,(mode_t)0600);
+
+      if(file_descript < 0)
+      {
+        cout<<"!";
+        //stringstream item;
+        //item<<"0"<<line;
+        //internalhash<T> item;
+        item.hash="0";
+        item.data=line;
+        lineBuffer.push_back(item);
+        close(file_descript);
+        continue;
+      }
+      cout<<"#";
+      unsigned long file_size;
+      if(size==0)
+      file_size=line.size;
+      else
+      file_size=size;
+      std::ostringstream sout2;
+
+
+
+      char* file_buffer = static_cast<char*>(mmap(0, file_size, PROT_READ, MAP_SHARED, file_descript, 0));
+      MD5((unsigned char*) file_buffer, file_size, result);
+      munmap(file_buffer, file_size);
+      sout2<<std::hex<<std::setfill('0');
+      for(auto c: result) sout2<<setw(2)<<(int)c;
+
+
+      cout<<sout2.str()<<endl;
+
+      item.hash=sout2.str();
+      item.data=line;
+      lineBuffer.push_back(item);
+      close(file_descript);
+    }
+    stringstream ss;
+    ss<<"hash"<<filename;
+    ofstream *output;
+    output = new ofstream(ss.str(), ios::out);
+    // write the contents of the current buffer to the temp file
+    for (size_t i = 0; i < lineBuffer.size(); ++i) {
+        *output << lineBuffer[i] << endl;
+    }
+    output->close();
+    delete output;
+
+  }
+
+}
 template <class T>
 class MERGE_DATA {
 
@@ -134,6 +220,7 @@ private:
     void WriteToTempFile(const vector<T> &lines, const string name);
     void OpenTempFiles();
     void CloseTempFiles();
+    void HashReduce();
 };
 
 
@@ -160,7 +247,7 @@ KwayMergeSort<T>::KwayMergeSort (const string &inFile,
 {
   _vHashFileNames[10000]="smallest";//10kb
   _vHashFileNames[1000000]="small";//1mb
-  _vHashFileNames[40000000]="moderate";//30mb
+  _vHashFileNames[40000000]="moderate";//40mb
   _vHashFileNames[700000000]="huge";//700mb
   _vHashFileNames[100000000000]="humungous";//100gb
   //_vHashFileNames[]=;
@@ -178,7 +265,10 @@ void KwayMergeSort<T>::Sort() {
     DivideAndSort();
     cin.get();
     if (_tempFileUsed == true)
-    Merge();
+    {
+      Merge();
+      HashReduce();
+    }
 }
 
 // change the buffer size used for sorting
@@ -428,6 +518,29 @@ void KwayMergeSort<T>::OpenTempFiles() {
                  << endl;
              exit(1);
         }
+    }
+}
+
+template <class T>
+void KwayMergeSort<T>::HashReduce () {
+    std::map<unsigned long int, string>::iterator itr = _vHashFileNames.begin();
+    map<int,unsigned long int> sizes;
+    sizes[0]=0;// full or no hash
+    sizes[1]=10000;
+    sizes[2]=1000000;//1mb
+    sizes[3]=15000000;//15mb
+    sizes[4]=100000000;//100mb
+    std::thread t[_vHashFileNames.size()];
+    int i=0;
+    while(itr!=_vHashFileNames.end())
+    {
+      cout<<"i: "<<i<<endl;
+      t[i]=std::thread(internalhash_calculator<T>,itr->second,sizes[i]);
+      i++;
+      itr++;
+    }
+    for (i = 0; i < _vHashFileNames.size(); ++i) {
+    t[i].join();
     }
 }
 

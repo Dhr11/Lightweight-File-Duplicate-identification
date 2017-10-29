@@ -33,6 +33,7 @@ struct fileinfo {
     friend istream& operator>>(istream &is, fileinfo &b)
     {
         is  >> b.size;
+        is.ignore(1024,'\t');
         getline( is,b.path,'\n');
         return is;
     }
