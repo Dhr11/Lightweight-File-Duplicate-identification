@@ -57,7 +57,7 @@ bool bySize(fileinfo const &a, fileinfo const &b) {
 int main(int argc, char* argv[]) {
 
     string inFile       = "info.fileinfo";
-    int  bufferSize     = 4000;      // allow the sorter to use 100Kb (base 10) of memory for sorting.
+    int  bufferSize     = 6000;      // allow the sorter to use 100Kb (base 10) of memory for sorting.
                                        // once full, it will dump to a temp file and grab another chunk.
     string tempPath     = "./";        // allows you to write the intermediate files anywhere you want.
 

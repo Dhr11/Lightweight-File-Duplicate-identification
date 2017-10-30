@@ -450,9 +450,16 @@ void KwayMergeSort<T>::Merge() {
         outQueue.push( MERGE_DATA<T>(line, _vTempFiles[i], _compareFunction) );
     }
     cout<<"outQueue size:"<<outQueue.size()<<endl;
-    // keep working until the queue is empty
-    //MERGE_DATA<T> past;
 
+    std::map<unsigned long int, string>::iterator itr2 = _vHashFileNames.begin();
+    while (itr2 != _vHashFileNames.end())
+    {
+    cout<<" itr2 sec"<<itr2->second.c_str()<<endl;
+    ofstream *output2;
+    output2 = new ofstream(itr2->second.c_str(), ios::out);// making new file and empty previous copy
+    output2->close();
+    itr2++;
+  }
     if(outQueue.size()>1)
     {
       std::map<unsigned long int, string>::iterator itr = _vHashFileNames.begin();
@@ -460,6 +467,7 @@ void KwayMergeSort<T>::Merge() {
     vector<T> lineBuffer;
     while (itr != _vHashFileNames.end())
     {
+
       if(outQueue.empty())
       {
         itr++;
