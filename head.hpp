@@ -82,7 +82,7 @@ void internalhash_calculator(string filename,int size)
     unsigned long int cursize(0);
     while(*file>>line)
     {
-      cout<<line.size<<"\t";
+      //cout<<line.size<<"\t";
       internalhash<T> item;
       int file_descript;
       if(line.size==0)
@@ -143,7 +143,7 @@ void internalhash_calculator(string filename,int size)
       for(auto c: result) sout2<<setw(2)<<(int)c;
 
 
-      cout<<sout2.str()<<endl;
+      //cout<<sout2.str()<<endl;
 
       item.hash=sout2.str();
       item.data=line;
@@ -268,9 +268,9 @@ KwayMergeSort<T>::KwayMergeSort (const string &inFile,
     , _runCounter(0)
     , _count(0)
 {
-  _vHashFileNames[10000]="smallest";//10kb
-  _vHashFileNames[1000000]="small";//1mb
-  _vHashFileNames[40000000]="moderate";//40mb
+  _vHashFileNames[5000]="smallest";//8kb
+  _vHashFileNames[500000]="small";//800kb
+  _vHashFileNames[30000000]="moderate";//40mb
   _vHashFileNames[700000000]="huge";//700mb
   _vHashFileNames[100000000000]="humungous";//100gb
   //_vHashFileNames[]=;
@@ -549,16 +549,16 @@ void KwayMergeSort<T>::HashReduce () {
     std::map<unsigned long int, string>::iterator itr = _vHashFileNames.begin();
     map<int,unsigned long int> sizes;
     sizes[0]=0;// full or no hash
-    sizes[1]=10000;
-    sizes[2]=1000000;//1mb
-    sizes[3]=15000000;//15mb
-    sizes[4]=100000000;//100mb
+    sizes[1]=5000;
+    sizes[2]=500000;//800kb
+    sizes[3]=10000000;//15mb
+    sizes[4]=50000000;//100mb
     std::thread t[_vHashFileNames.size()];
     int i=0;
     while(itr!=_vHashFileNames.end())
     {
-      cout<<"i: "<<i<<endl;
-      t[i]=std::thread(internalhash_calculator<T>,itr->second,sizes[i]);
+      //cout<<"i: "<<i<<endl;
+      t[i]=std::thread(internalhash_calculator<T>,itr->second,sizes[i]);//"moderate",500000);//
       i++;
       itr++;
     }
