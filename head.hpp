@@ -237,6 +237,7 @@ private:
     bool _tempFileUsed;
     ostream *_out;
     int _count;  //no of lines
+    std::thread t[5];
     // drives the creation of sorted sub-files stored on disk.
     void DivideAndSort();
     void Merge();
@@ -290,6 +291,7 @@ void KwayMergeSort<T>::Sort() {
     if (_tempFileUsed == true)
     {
       Merge();
+      cout<<"after merge()"<<endl;
       HashReduce();
     }
 }
@@ -409,6 +411,7 @@ void KwayMergeSort<T>::WriteToTempFile(const vector<T> &lineBuffer,const string 
     else
     {
       tempFileName = name;
+      cout<<name<<endl;
     }
     ofstream *output;
     output = new ofstream(tempFileName.c_str(), ios::out);
@@ -460,6 +463,22 @@ void KwayMergeSort<T>::Merge() {
     output2->close();
     itr2++;
   }
+
+  map<string,unsigned long int> sizes;
+  sizes["smallest"]=0;// full or no hash
+  sizes["small"]=5000;
+  sizes["moderate"]=500000;//800kb
+  sizes["huge"]=10000000;//15mb
+  sizes["humungous"]=50000000;//100mb
+
+  map<string,int> sizestothread;
+  sizestothread["smallest"]=0;// full or no hash
+  sizestothread["small"]=1;
+  sizestothread["moderate"]=2;//800kb
+  sizestothread["huge"]=3;//15mb
+  sizestothread["humungous"]=4;
+
+
     if(outQueue.size()>1)
     {
       std::map<unsigned long int, string>::iterator itr = _vHashFileNames.begin();
@@ -507,6 +526,8 @@ void KwayMergeSort<T>::Merge() {
             lineBuffer.push_back(past.data);
             WriteToTempFile(lineBuffer, itr->second);
             lineBuffer.clear();
+            //cout<<"itr sec: "<<itr->second<<" sizes[itr->second]"<<sizes[itr->second]<<" sizestothread[itr->second]:"<<sizestothread[itr->second]<<endl;
+            t[sizestothread[itr->second]]=std::thread(internalhash_calculator<T>,itr->second,sizes[itr->second]);
             }
         }
 
@@ -517,6 +538,8 @@ void KwayMergeSort<T>::Merge() {
         {
           WriteToTempFile(lineBuffer, itr->second);
           lineBuffer.clear();
+          //cout<<"itr sec: "<<itr->second<<" sizes[itr->second]"<<sizes[itr->second]<<" sizestothread[itr->second]:"<<sizestothread[itr->second]<<endl;
+          t[sizestothread[itr->second]]=std::thread(internalhash_calculator<T>,itr->second,sizes[itr->second]);
         }
         itr++;
         continue;
@@ -554,7 +577,7 @@ void KwayMergeSort<T>::OpenTempFiles() {
 
 template <class T>
 void KwayMergeSort<T>::HashReduce () {
-    std::map<unsigned long int, string>::iterator itr = _vHashFileNames.begin();
+    /*std::map<unsigned long int, string>::iterator itr = _vHashFileNames.begin();
     map<int,unsigned long int> sizes;
     sizes[0]=0;// full or no hash
     sizes[1]=5000;
@@ -569,8 +592,9 @@ void KwayMergeSort<T>::HashReduce () {
       t[i]=std::thread(internalhash_calculator<T>,itr->second,sizes[i]);//"moderate",500000);//
       i++;
       itr++;
-    }
-    for (i = 0; i < _vHashFileNames.size(); ++i) {
+    }*/
+    for (int i = 0; i < _vHashFileNames.size(); ++i) {
+    cout<<"join thread:"<<i<<endl;
     t[i].join();
     }
 }
