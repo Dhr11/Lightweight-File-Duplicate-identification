@@ -1,5 +1,5 @@
-#ifndef KWAYMERGESORT_H
-#define KWAYMERGESORT_H
+#ifndef HEAD_H
+#define HEAD_H
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
@@ -26,9 +26,6 @@ using namespace std;
 
 unsigned char result[MD5_DIGEST_LENGTH];
 bool isRegularFile(const string& filename);
-// STLized version of basename()
-// (because POSIX basename() modifies the input string pointer)
-// Additionally: removes any extension the basename might have.
 std::string stl_basename(const std::string& path);
 
 
@@ -53,8 +50,7 @@ public:
   }
   bool operator < (const internalhash &a) const
   {
-      // recall that priority queues try to sort from
-      // highest to lowest. thus, we need to negate.
+      // priority queues sort from highest to lowest. so negate.
       if(a.data.size==data.size)
       {
         return (hash.compare(a.hash));
@@ -82,7 +78,6 @@ void internalhash_calculator(string filename,int size)
     unsigned long int cursize(0);
     while(*file>>line)
     {
-      //cout<<line.size<<"\t";
       internalhash<T> item;
       int file_descript;
       if(line.size==0)
@@ -111,16 +106,10 @@ void internalhash_calculator(string filename,int size)
           cursize=line.size;
                   }
       }
-      //stringstream ss;
-      //ss<<'"'<<line.path.c_str()<<'"';
-      //cout<<ss.str().c_str()<<" "<<endl;
       file_descript = open(line.path.c_str(), O_RDONLY,(mode_t)0600);
 
       if(file_descript < 0)
       {
-        //stringstream item;
-        //item<<"0"<<line;
-        //internalhash<T> item;
         item.hash="0";
         item.data=line;
         lineBuffer.push_back(item);
@@ -169,7 +158,6 @@ template <class T>
 class MERGE_DATA {
 
 public:
-    // data
     T data;
     istream *stream;
     bool (*compFunc)(const T &a, const T &b);
@@ -192,7 +180,6 @@ public:
         compFunc(compFunc)
     {}
 
-    // comparison operator for maps keyed on this structure
     bool operator < (const MERGE_DATA &a) const
     {
         // recall that priority queues try to sort from
@@ -207,19 +194,19 @@ public:
 // Class methods and elements
 //************************************************
 template <class T>
-class KwayMergeSort {
+class FindDup {
 
 public:
 
     // constructor, using custom comparison function
-    KwayMergeSort(const string &inFile,
+    FindDup(const string &inFile,
                  ostream *out,
                  bool (*compareFunction)(const T &a, const T &b) = NULL,
                  int  maxBufferSize  = 1000000,
                  string tempPath     = "./");
 
     // destructor
-    ~KwayMergeSort(void);
+    ~FindDup(void);
 
     void Sort();            // Sort the data
     void SetBufferSize(int bufferSize);   // change the buffer size
@@ -238,25 +225,19 @@ private:
     ostream *_out;
     int _count;  //no of lines
     std::thread t[5];
+    vector<int> indexes;
     // drives the creation of sorted sub-files stored on disk.
     void DivideAndSort();
     void Merge();
-    void WriteToTempFile(const vector<T> &lines, const string name);
+    void WTempfile(const vector<T> &lines, const string name);
     void OpenTempFiles();
     void CloseTempFiles();
     void HashReduce();
 };
 
 
-
-//************************************************
-// IMPLEMENTATION
-// Class methods and elements
-//************************************************
-
-// constructor
 template <class T>
-KwayMergeSort<T>::KwayMergeSort (const string &inFile,
+FindDup<T>::FindDup (const string &inFile,
                                ostream *out,
                                bool (*compareFunction)(const T &a, const T &b),
                                int maxBufferSize,
@@ -277,15 +258,13 @@ KwayMergeSort<T>::KwayMergeSort (const string &inFile,
   //_vHashFileNames[]=;
 }
 
-// constructor
-// destructor
 template <class T>
-KwayMergeSort<T>::~KwayMergeSort(void)
+FindDup<T>::~FindDup(void)
 {}
 
 // API for sorting.
 template <class T>
-void KwayMergeSort<T>::Sort() {
+void FindDup<T>::Sort() {
     DivideAndSort();
     cin.get();
     if (_tempFileUsed == true)
@@ -298,19 +277,19 @@ void KwayMergeSort<T>::Sort() {
 
 // change the buffer size used for sorting
 template <class T>
-void KwayMergeSort<T>::SetBufferSize (int bufferSize) {
+void FindDup<T>::SetBufferSize (int bufferSize) {
     _maxBufferSize = bufferSize;
 }
 
 // change the sorting criteria
 template <class T>
-void KwayMergeSort<T>::SetComparison (bool (*compareFunction)(const T &a, const T &b)) {
+void FindDup<T>::SetComparison (bool (*compareFunction)(const T &a, const T &b)) {
     _compareFunction = compareFunction;
 }
 
 
 template <class T>
-void KwayMergeSort<T>::DivideAndSort() {
+void FindDup<T>::DivideAndSort() {
 
     istream *input = new ifstream(_inFile.c_str(), ios::in);
     if ( input->good() == false ) {
@@ -324,7 +303,6 @@ void KwayMergeSort<T>::DivideAndSort() {
     // track whether or not we actually had to use a temp
     _tempFileUsed = false;
 
-    // keep reading until there is no more input data
     T line;
     _count=0;
     while (*input >> line) {
@@ -340,8 +318,7 @@ void KwayMergeSort<T>::DivideAndSort() {
             else
                 sort(lineBuffer.begin(), lineBuffer.end());
             // write the sorted data to a temp file
-            WriteToTempFile(lineBuffer,"null");
-            // clear the buffer for the next run
+            WTempfile(lineBuffer,"null");
             lineBuffer.clear();
             _tempFileUsed = true;
             totalBytes = 0;
@@ -350,8 +327,7 @@ void KwayMergeSort<T>::DivideAndSort() {
 cout<<"total lines: "<<_count<<endl;
     // handle the run (if any) from the last chunk of the input file.
     if (lineBuffer.empty() == false) {
-        // write the last "chunk" to the tempfile if
-        // a temp file had to be used (i.e., we exceeded the memory)
+        // write the last "chunk" to file if file had to be used
         if (_tempFileUsed == true) {
             if (_compareFunction != NULL)
                 {
@@ -361,9 +337,8 @@ cout<<"total lines: "<<_count<<endl;
                 }
             else
                 sort(lineBuffer.begin(), lineBuffer.end());
-            // write the sorted data to a temp file
-            //WriteToTempFile(lineBuffer);
-            WriteToTempFile(lineBuffer,"null");
+
+            WTempfile(lineBuffer,"null");
         }
         // otherwise, the entire file fit in the memory given,
         // so we can just dump to the output.
@@ -387,7 +362,6 @@ cout<<"total lines: "<<_count<<endl;
               past=lineBuffer[i];
             }
               *_out << past << endl;
-            //*_out << lineBuffer[i] << endl;
           }
         }
     }
@@ -395,7 +369,7 @@ cout<<"total lines: "<<_count<<endl;
 
 
 template <class T>
-void KwayMergeSort<T>::WriteToTempFile(const vector<T> &lineBuffer,const string name) {
+void FindDup<T>::WTempfile(const vector<T> &lineBuffer,const string name) {
     stringstream tempFileSS;
     string tempFileName;
     if((name.compare("null")==0))
@@ -427,37 +401,24 @@ void KwayMergeSort<T>::WriteToTempFile(const vector<T> &lineBuffer,const string 
 
 }
 
-
-//---------------------------------------------------------
-// MergeDriver()
-//
-// Merge the sorted temp files.
-// uses a priority queue, with the values being a pair of
-// the record from the file, and the stream from which the record came.
-// SEE: http://stackoverflow.com/questions/2290518/c-n-way-merge-for-external-sort, post from Eric Lippert.
-//----------------------------------------------------------
 template <class T>
-void KwayMergeSort<T>::Merge() {
+void FindDup<T>::Merge() {
 
-    // open the sorted temp files up for merging.
-    // loads ifstream pointers into _vTempFiles
     OpenTempFiles();
 
     // priority queue for the buffer.
     priority_queue< MERGE_DATA<T> > outQueue;
-
     // extract the first line from each temp file
     T line;
     for (size_t i = 0; i < _vTempFiles.size(); ++i) {
         *_vTempFiles[i] >> line;
         outQueue.push( MERGE_DATA<T>(line, _vTempFiles[i], _compareFunction) );
     }
-    cout<<"outQueue size:"<<outQueue.size()<<endl;
 
     std::map<unsigned long int, string>::iterator itr2 = _vHashFileNames.begin();
     while (itr2 != _vHashFileNames.end())
     {
-    cout<<" itr2 sec"<<itr2->second.c_str()<<endl;
+    //cout<<" itr2 sec"<<itr2->second.c_str()<<endl;
     ofstream *output2;
     output2 = new ofstream(itr2->second.c_str(), ios::out);// making new file and empty previous copy
     output2->close();
@@ -524,10 +485,11 @@ void KwayMergeSort<T>::Merge() {
         if((outQueue.empty()) && past.data.size==curmultiple)  ///check if insert is required
           { cout<<"last one:)"<<endl;
             lineBuffer.push_back(past.data);
-            WriteToTempFile(lineBuffer, itr->second);
+            WTempfile(lineBuffer, itr->second);
             lineBuffer.clear();
             //cout<<"itr sec: "<<itr->second<<" sizes[itr->second]"<<sizes[itr->second]<<" sizestothread[itr->second]:"<<sizestothread[itr->second]<<endl;
             t[sizestothread[itr->second]]=std::thread(internalhash_calculator<T>,itr->second,sizes[itr->second]);
+            indexes.push_back(sizestothread[itr->second]);
             }
         }
 
@@ -536,10 +498,11 @@ void KwayMergeSort<T>::Merge() {
         outQueue.push(past);
         if(!lineBuffer.empty())
         {
-          WriteToTempFile(lineBuffer, itr->second);
+          WTempfile(lineBuffer, itr->second);
           lineBuffer.clear();
           //cout<<"itr sec: "<<itr->second<<" sizes[itr->second]"<<sizes[itr->second]<<" sizestothread[itr->second]:"<<sizestothread[itr->second]<<endl;
           t[sizestothread[itr->second]]=std::thread(internalhash_calculator<T>,itr->second,sizes[itr->second]);
+          indexes.push_back(sizestothread[itr->second]);
         }
         itr++;
         continue;
@@ -554,7 +517,7 @@ void KwayMergeSort<T>::Merge() {
 
 
 template <class T>
-void KwayMergeSort<T>::OpenTempFiles() {
+void FindDup<T>::OpenTempFiles() {
     for (size_t i=0; i < _vTempFileNames.size(); ++i) {
 
         ifstream *file;
@@ -576,32 +539,22 @@ void KwayMergeSort<T>::OpenTempFiles() {
 }
 
 template <class T>
-void KwayMergeSort<T>::HashReduce () {
-    /*std::map<unsigned long int, string>::iterator itr = _vHashFileNames.begin();
-    map<int,unsigned long int> sizes;
-    sizes[0]=0;// full or no hash
-    sizes[1]=5000;
-    sizes[2]=500000;//800kb
-    sizes[3]=10000000;//15mb
-    sizes[4]=50000000;//100mb
-    std::thread t[_vHashFileNames.size()];
-    int i=0;
-    while(itr!=_vHashFileNames.end())
-    {
-      //cout<<"i: "<<i<<endl;
-      t[i]=std::thread(internalhash_calculator<T>,itr->second,sizes[i]);//"moderate",500000);//
-      i++;
-      itr++;
-    }*/
+void FindDup<T>::HashReduce () {
+
+    for(auto const& value: indexes) {
+      cout<<"join thread:"<<value<<endl;
+      t[value].join();
+    }
+/*
     for (int i = 0; i < _vHashFileNames.size(); ++i) {
     cout<<"join thread:"<<i<<endl;
     t[i].join();
-    }
+  }*/
 }
 
 
 template <class T>
-void KwayMergeSort<T>::CloseTempFiles() {
+void FindDup<T>::CloseTempFiles() {
     // delete the pointers to the temp files.
     for (size_t i=0; i < _vTempFiles.size(); ++i) {
         _vTempFiles[i]->close();
@@ -651,4 +604,4 @@ string stl_basename(const string &path) {
 }
 
 
-#endif /* KWAYMERGESORT_H */
+#endif

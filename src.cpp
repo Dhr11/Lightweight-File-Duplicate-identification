@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
     ostream *output;
     output = new ofstream("shortedLess.fileinfo", ios::out);
 
-    KwayMergeSort<fileinfo> *filesize_sorter = new KwayMergeSort<fileinfo> (inFile,
+    FindDup<fileinfo> *filesize_sorter = new FindDup<fileinfo> (inFile,
                                                             output,
                                                             bySize,
                                                             bufferSize,
