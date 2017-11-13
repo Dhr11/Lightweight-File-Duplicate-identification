@@ -23,7 +23,6 @@ struct fileinfo {
         else   return false;
     }
 
-    // overload the < < operator for writing a BED struct
     friend ostream& operator<<(ostream &os, const fileinfo &b)
     {
         os  << b.size  << "\t"
@@ -44,7 +43,6 @@ struct fileinfo {
         cout<<" used"<<endl;
     }
 */
-    // overload the >> operator for reading into a BED struct
 };
 
 
@@ -57,9 +55,8 @@ bool bySize(fileinfo const &a, fileinfo const &b) {
 int main(int argc, char* argv[]) {
 
     string inFile       = "info.fileinfo";
-    int  bufferSize     = 6000;      // allow the sorter to use 100Kb (base 10) of memory for sorting.
-                                       // once full, it will dump to a temp file and grab another chunk.
-    string tempPath     = "./";        // allows you to write the intermediate files anywhere you want.
+    int  bufferSize     = 6000;        //limit each file to 6000 lines
+    string tempPath     = "./";        // to write the temporary files at a location.
 
     string dir = argv[1];
     ofstream *filemapping;
@@ -76,11 +73,7 @@ int main(int argc, char* argv[]) {
     ostream *output;
     output = new ofstream("shortedLess.fileinfo", ios::out);
 
-    FindDup<fileinfo> *filesize_sorter = new FindDup<fileinfo> (inFile,
-                                                            output,
-                                                            bySize,
-                                                            bufferSize,
-                                                            tempPath);
+    FindDup<fileinfo> *filesize_sorter = new FindDup<fileinfo> (inFile,output,bySize,bufferSize,tempPath);
 
     cout << "First sort by size\n";
     filesize_sorter->Sort();

@@ -132,8 +132,6 @@ void internalhash_calculator(string filename,int size)
       for(auto c: result) sout2<<setw(2)<<(int)c;
 
 
-      //cout<<sout2.str()<<endl;
-
       item.hash=sout2.str();
       item.data=line;
       lineBuffer.push_back(item);
@@ -161,9 +159,6 @@ public:
     T data;
     istream *stream;
     bool (*compFunc)(const T &a, const T &b);
-
-    // constructor
-
     MERGE_DATA ()
     {
       data.size=0;data.path="";
@@ -174,25 +169,17 @@ public:
     MERGE_DATA (const T &data,
                 istream *stream,
                 bool (*compFunc)(const T &a, const T &b))
-    :
-        data(data),
-        stream(stream),
-        compFunc(compFunc)
+    :   data(data),stream(stream),compFunc(compFunc)
     {}
 
     bool operator < (const MERGE_DATA &a) const
     {
-        // recall that priority queues try to sort from
-        // highest to lowest. thus, we need to negate.
+    // priority queues sort highest to lowest. so negate.
         return !(compFunc(data, a.data));
     }
 };
 
 
-//************************************************
-// DECLARATION
-// Class methods and elements
-//************************************************
 template <class T>
 class FindDup {
 
@@ -226,12 +213,11 @@ private:
     int _count;  //no of lines
     std::thread t[5];
     vector<int> indexes;
-    // drives the creation of sorted sub-files stored on disk.
     void DivideAndSort();
-    void Merge();
+    void Merge_Partition();
     void WTempfile(const vector<T> &lines, const string name);
-    void OpenTempFiles();
-    void CloseTempFiles();
+    void OTempFiles();
+    void CTemppFiles();
     void HashReduce();
 };
 
@@ -250,9 +236,9 @@ FindDup<T>::FindDup (const string &inFile,
     , _runCounter(0)
     , _count(0)
 {
-  _vHashFileNames[5000]="smallest";//8kb
-  _vHashFileNames[500000]="small";//800kb
-  _vHashFileNames[30000000]="moderate";//40mb
+  _vHashFileNames[5000]="smallest";//5kb
+  _vHashFileNames[500000]="small";//500kb
+  _vHashFileNames[30000000]="moderate";//30mb
   _vHashFileNames[700000000]="huge";//700mb
   _vHashFileNames[100000000000]="humungous";//100gb
   //_vHashFileNames[]=;
@@ -269,8 +255,8 @@ void FindDup<T>::Sort() {
     cin.get();
     if (_tempFileUsed == true)
     {
-      Merge();
-      cout<<"after merge()"<<endl;
+      Merge_Partition();
+      cout<<"after Merge_Partition()"<<endl;
       HashReduce();
     }
 }
@@ -293,14 +279,13 @@ void FindDup<T>::DivideAndSort() {
 
     istream *input = new ifstream(_inFile.c_str(), ios::in);
     if ( input->good() == false ) {
-        cerr << "Error: The requested input file (" << _inFile << ") could not be opened. Exiting!" << endl;
+        cerr << "Error: file (" << _inFile << ") could not be opened. Exit" << endl;
         exit (1);
     }
     vector<T> lineBuffer;
     lineBuffer.reserve(_maxBufferSize);
     unsigned int totalBytes = 0;  // track the number of bytes consumed so far.
 
-    // track whether or not we actually had to use a temp
     _tempFileUsed = false;
 
     T line;
@@ -402,9 +387,9 @@ void FindDup<T>::WTempfile(const vector<T> &lineBuffer,const string name) {
 }
 
 template <class T>
-void FindDup<T>::Merge() {
+void FindDup<T>::Merge_Partition() {
 
-    OpenTempFiles();
+    OTempFiles();
 
     // priority queue for the buffer.
     priority_queue< MERGE_DATA<T> > outQueue;
@@ -512,27 +497,26 @@ void FindDup<T>::Merge() {
 
   }
     // clean up the temp files.
-    CloseTempFiles();
+    CTemppFiles();
 }
 
 
 template <class T>
-void FindDup<T>::OpenTempFiles() {
+void FindDup<T>::OTempFiles() {
     for (size_t i=0; i < _vTempFileNames.size(); ++i) {
 
-        ifstream *file;
-
+        int yes(0);
         if (isRegularFile(_vTempFileNames[i]) == true) {
-            file = new ifstream(_vTempFileNames[i].c_str(), ios::in);
+        ifstream *file = new ifstream(_vTempFileNames[i].c_str(), ios::in);
+            if (file->good() == true) {
+                // add a pointer to the opened temp file to the list
+                _vTempFiles.push_back(file);
+                yes=1;
+            }
         }
-        if (file->good() == true) {
-            // add a pointer to the opened temp file to the list
-            _vTempFiles.push_back(file);
-        }
-        else {
-            cerr << "Unable to open temp file (" << _vTempFileNames[i]
-                 << ").  I suspect a limit on number of open file handles.  Exiting."
-                 << endl;
+
+        if(yes==0)
+        {    cerr << "Unable to open temp file (" << _vTempFileNames[i]<< ").Exiting."<< endl;
              exit(1);
         }
     }
@@ -545,16 +529,11 @@ void FindDup<T>::HashReduce () {
       cout<<"join thread:"<<value<<endl;
       t[value].join();
     }
-/*
-    for (int i = 0; i < _vHashFileNames.size(); ++i) {
-    cout<<"join thread:"<<i<<endl;
-    t[i].join();
-  }*/
 }
 
 
 template <class T>
-void FindDup<T>::CloseTempFiles() {
+void FindDup<T>::CTemppFiles() {
     // delete the pointers to the temp files.
     for (size_t i=0; i < _vTempFiles.size(); ++i) {
         _vTempFiles[i]->close();
@@ -570,8 +549,7 @@ void FindDup<T>::CloseTempFiles() {
 
 /*
    returns TRUE if the file is a regular file:
-     not a pipe/device.
-   This implies that the file can be opened/closed/seek'd multiple times without losing information
+   can be opened/closed/seek'd multiple times without losing information
  */
 bool isRegularFile(const string& filename) {
        struct stat buf ;
@@ -579,7 +557,7 @@ bool isRegularFile(const string& filename) {
 
        i = stat(filename.c_str(), &buf);
        if (i!=0) {
-               cerr << "Error: can't determine file type of '" << filename << "': " << strerror(errno) << endl;
+               cerr << "Error: file'" << filename << "': " << strerror(errno);
                exit(1);
        }
        if (S_ISREG(buf.st_mode))
