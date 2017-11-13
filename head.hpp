@@ -300,7 +300,7 @@ FindDup<T>::~FindDup(void)
 template <class T>
 void FindDup<T>::Sort() {
     DivideAndSort();
-
+    int ch=cin.get();
     if (_tempFileUsed == true)
     {
       Merge_Partition();
@@ -539,11 +539,12 @@ void FindDup<T>::Merge_Partition() {
       outQueue.pop();
       if(past.data.size<itr->first)
       {
-        lineBuffer.push_back(past.data);
-        if (*(past.stream))
-          outQueue.push( MERGE_DATA<T>(line, past.stream, _compareFunction) );
-        //cout<<"past or first info: "<<past.data<<endl;
-        while (outQueue.empty() == false) {
+        //lineBuffer.push_back(past.data);
+        //if (*(past.stream))
+        //  outQueue.push( MERGE_DATA<T>(line, past.stream, _compareFunction) );
+        cout<<"past or first info: "<<past.data<<endl;
+        while (outQueue.empty() == false)
+        {
             bool insert=false;
             MERGE_DATA<T> lowest = outQueue.top();
             if(lowest.data.size>itr->first)
