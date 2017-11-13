@@ -168,7 +168,7 @@ void internalhash_calculator(string filename,int size)
       file_size=size;
       std::ostringstream sout2;
 
-
+      cursize=line.size;
 
       char* file_buffer = static_cast<char*>(mmap(0, file_size, PROT_READ, MAP_PRIVATE, file_descript, 0));
       MD5((unsigned char*) file_buffer, file_size, result);
@@ -186,7 +186,7 @@ void internalhash_calculator(string filename,int size)
 
     stringstream ss;
     ss<<"hash"<<filename;
-    cout<<"sec print in hash:"<<ss.str()<<" linebuffer left: "<<lineBuffer.size()<<endl;
+    //cout<<"sec print in hash:"<<ss.str()<<" linebuffer left: "<<lineBuffer.size()<<endl;
     ofstream *output;
     output = new ofstream(ss.str(), ios::out|ios_base::app|ios::ate);
     // write the contents of the current buffer to the temp file
@@ -300,13 +300,14 @@ FindDup<T>::~FindDup(void)
 template <class T>
 void FindDup<T>::Sort() {
     DivideAndSort();
-    cin.get();
+
     if (_tempFileUsed == true)
     {
       Merge_Partition();
       cout<<"after Merge_Partition()"<<endl;
-      HashReduce();
+
     }
+    HashReduce();
 }
 
 // change the buffer size used for sorting
@@ -374,28 +375,75 @@ cout<<"total lines: "<<_count<<endl;
             WTempfile(lineBuffer,"null");
         }
         // otherwise, the entire file fit in the memory given,
-        // so we can just dump to the output.
         else {
             if (_compareFunction != NULL)
                 {
-                  cout<<"file fit mem: "<<*lineBuffer.begin()<<lineBuffer.size()<<endl;
+                  //cout<<"file fit mem: "<<*lineBuffer.begin()<<lineBuffer.size()<<endl;
                   sort(lineBuffer.begin(), lineBuffer.end(), *_compareFunction);
-                  cout<<"after sort file fit mem: "<<*lineBuffer.begin()<<lineBuffer.size()<<endl;
+                  //cout<<"after sort file fit mem: "<<*lineBuffer.begin()<<lineBuffer.size()<<endl;
                 }
             else
                 sort(lineBuffer.begin(), lineBuffer.end());
             unsigned long int curmultiple(0);
+            std::map<unsigned long int, string>::iterator itr = _vHashFileNames.begin();
+            while (itr != _vHashFileNames.end())
+            {
             T past=lineBuffer[0];
+            vector<T> tmpBuffer;
+            map<string,unsigned long int> sizes;
+            sizes["smallest"]=0;// full or no hash
+            sizes["small"]=5000;//5kb
+            sizes["moderate"]=500000;//500kb
+            sizes["huge"]=10000000;//10mb
+            sizes["humungous"]=50000000;//50mb
+
+            map<string,int> sizestothread;
+            sizestothread["smallest"]=0;// full or no hash
+            sizestothread["small"]=1;
+            sizestothread["moderate"]=2;//800kb
+            sizestothread["huge"]=3;//15mb
+            sizestothread["humungous"]=4;
+
             for (size_t i = 1; i < lineBuffer.size(); ++i)
           {
+            if(lineBuffer[i].size>itr->first)
+            {
+              if(tmpBuffer.size()>0)
+              {
+                WTempfile(tmpBuffer,itr->second);
+                tmpBuffer.clear();
+                t[sizestothread[itr->second]]=std::thread(internalhash_calculator<T>,itr->second,sizes[itr->second]);
+                indexes.push_back(sizestothread[itr->second]);
+              }
+              itr++;
+              continue;
+            }
+            //cout<<lineBuffer[i].size<<" "<<past.size<<endl;
             if((lineBuffer[i].size==past.size) || (past.size==curmultiple))
             {
               curmultiple=past.size;
-              *_out << past << endl;
-              past=lineBuffer[i];
+              //*_out << past << endl;
+              tmpBuffer.push_back(past);
             }
-              *_out << past << endl;
+            past=lineBuffer[i];
+
           }
+          if(past.size==curmultiple)
+          {
+            //*_out << past << endl;
+            tmpBuffer.push_back(past);
+          }
+          //if(tmpBuffer.size()>0)
+          //{
+          //  WTempfile(tmpBuffer,itr->second);
+          //  tmpBuffer.clear();
+          //  t[sizestothread[itr->second]]=std::thread(internalhash_calculator<T>,itr->second,sizes[itr->second]);
+          //  indexes.push_back(sizestothread[itr->second]);
+          //}
+          itr++;
+
+
+        }
         }
     }
 }
