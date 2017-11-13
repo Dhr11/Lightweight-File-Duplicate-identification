@@ -51,6 +51,10 @@ public:
   bool operator < (const internalhash &a) const
   {
       // priority queues sort from highest to lowest. so negate.
+      if(data.size<a.data.size)
+      {
+        return false;//true;
+      }
       if(a.data.size==data.size)
       {
         return (hash.compare(a.hash));
@@ -89,22 +93,43 @@ void internalhash_calculator(string filename,int size)
       }
       if(line.size!=cursize)
       {
-        if(!lineBuffer.empty())
+        if(lineBuffer.size()>1)
         {
           sort(lineBuffer.begin(), lineBuffer.end());
+          auto past=lineBuffer[0];
+          string curhash;
+          curhash.assign("NULL");
           stringstream ss;
           ss<<"hash"<<filename;
           ofstream *output;
           output = new ofstream(ss.str(), ios::out|ios_base::app|ios::ate);
           // write the contents of the current buffer to the temp file
-          for (size_t i = 0; i < lineBuffer.size(); ++i) {
+          for (size_t i = 1; i < lineBuffer.size(); ++i) {
+    //trial
+      /*
+             if(lineBuffer[i].hash.compare(past.hash)==0 && curhash.compare(past.hash)!=0)
+              {
+                curhash.assign(past.hash);
+                *output << past << endl;
+              }
+              else if(lineBuffer[i].hash.compare(past.hash)!=0 && curhash.compare(past.hash)==0)
+              {
+                *output << past << endl;
+              }
+        */
               *output << lineBuffer[i] << endl;
+              past=lineBuffer[i];
+          }
+          if(curhash.compare(past.hash)==0)
+          {
+            *output << past << endl;
           }
           lineBuffer.clear();
           output->close();
           delete output;
           cursize=line.size;
                   }
+          lineBuffer.clear();//only one "unique" available
       }
       file_descript = open(line.path.c_str(), O_RDONLY,(mode_t)0600);
 
@@ -139,6 +164,7 @@ void internalhash_calculator(string filename,int size)
     }
     stringstream ss;
     ss<<"hash"<<filename;
+    cout<<"sec print in hash:"<<ss.str()<<" linebuffer left: "<<lineBuffer.size()<<endl;
     ofstream *output;
     output = new ofstream(ss.str(), ios::out|ios_base::app|ios::ate);
     // write the contents of the current buffer to the temp file
@@ -412,10 +438,10 @@ void FindDup<T>::Merge_Partition() {
 
   map<string,unsigned long int> sizes;
   sizes["smallest"]=0;// full or no hash
-  sizes["small"]=5000;
-  sizes["moderate"]=500000;//800kb
-  sizes["huge"]=10000000;//15mb
-  sizes["humungous"]=50000000;//100mb
+  sizes["small"]=5000;//5kb
+  sizes["moderate"]=500000;//500kb
+  sizes["huge"]=10000000;//10mb
+  sizes["humungous"]=50000000;//50mb
 
   map<string,int> sizestothread;
   sizestothread["smallest"]=0;// full or no hash
@@ -452,6 +478,10 @@ void FindDup<T>::Merge_Partition() {
             MERGE_DATA<T> lowest = outQueue.top();
             if(lowest.data.size>itr->first)
             {
+              if(past.data.size==curmultiple)
+              {
+                lineBuffer.push_back(past.data);
+              }
               break;
             }
             if((lowest.data.size==past.data.size) || (past.data.size==curmultiple))
@@ -467,9 +497,12 @@ void FindDup<T>::Merge_Partition() {
                 outQueue.push( MERGE_DATA<T>(line, lowest.stream, _compareFunction) );
 
         }
-        if((outQueue.empty()) && past.data.size==curmultiple)  ///check if insert is required
+        cout<<"all files"<<past.data.size<<" "<<curmultiple<<endl;
+        //if((outQueue.empty()) && past.data.size==curmultiple)  ///check if insert is required
+        if(past.data.size==curmultiple)  ///check if insert is required
           { cout<<"last one:)"<<endl;
             lineBuffer.push_back(past.data);
+            sort(lineBuffer.begin(),lineBuffer.end());
             WTempfile(lineBuffer, itr->second);
             lineBuffer.clear();
             //cout<<"itr sec: "<<itr->second<<" sizes[itr->second]"<<sizes[itr->second]<<" sizestothread[itr->second]:"<<sizestothread[itr->second]<<endl;
@@ -483,6 +516,7 @@ void FindDup<T>::Merge_Partition() {
         outQueue.push(past);
         if(!lineBuffer.empty())
         {
+          sort(lineBuffer.begin(),lineBuffer.end());
           WTempfile(lineBuffer, itr->second);
           lineBuffer.clear();
           //cout<<"itr sec: "<<itr->second<<" sizes[itr->second]"<<sizes[itr->second]<<" sizestothread[itr->second]:"<<sizestothread[itr->second]<<endl;
