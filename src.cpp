@@ -58,6 +58,17 @@ int main(int argc, char* argv[]) {
     int  bufferSize     = 6000;        //limit each file to 6000 lines
     string tempPath     = "./";        // to write the temporary files at a location.
 
+    if(argc>3 || argc<2)
+    {
+      cout<<"wrong input parameters ./fundup dirpath";
+      exit(1);
+    }
+
+    int minsize=0;
+    if(argc==3)
+    {
+      minsize=atoi(argv[2]);
+    }
     string dir = argv[1];
     ofstream *filemapping;
     filemapping = new ofstream(inFile.c_str(), ios::out);
@@ -65,6 +76,9 @@ int main(int argc, char* argv[]) {
   		if(file->status().type()!=fs::regular_file) continue;
       fileinfo a;
       a.size = fs::file_size(*file);
+      if(a.size<minsize)
+      continue;
+
       a.path= file->path().string();
       *filemapping<<a<<"\n";
   		    }
@@ -74,8 +88,6 @@ int main(int argc, char* argv[]) {
     output = new ofstream("shortedLess.fileinfo", ios::out);
 
     FindDup<fileinfo> *filesize_sorter = new FindDup<fileinfo> (inFile,output,bySize,bufferSize,tempPath);
-
-    cout << "First sort by size\n";
     filesize_sorter->Sort();
 
 }

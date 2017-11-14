@@ -365,9 +365,9 @@ cout<<"total lines: "<<_count<<endl;
         if (_tempFileUsed == true) {
             if (_compareFunction != NULL)
                 {
-                  cout<<"lastchunk: "<<*lineBuffer.begin()<<endl;
+                  //cout<<"lastchunk: "<<*lineBuffer.begin()<<endl;
                   sort(lineBuffer.begin(), lineBuffer.end(), *_compareFunction);
-                  cout<<"last chuunk: "<<*lineBuffer.begin()<<endl;
+                  //cout<<"last chuunk: "<<*lineBuffer.begin()<<endl;
                 }
             else
                 sort(lineBuffer.begin(), lineBuffer.end());
@@ -531,7 +531,9 @@ void FindDup<T>::Merge_Partition() {
 
       if(outQueue.empty())
       {
+        cout<<"leaving filemaking as empty"<<itr->second<<endl;
         itr++;
+
         continue;
       }
       MERGE_DATA<T> past = outQueue.top();
@@ -540,9 +542,11 @@ void FindDup<T>::Merge_Partition() {
       if(past.data.size<itr->first)
       {
         //lineBuffer.push_back(past.data);
-        //if (*(past.stream))
-        //  outQueue.push( MERGE_DATA<T>(line, past.stream, _compareFunction) );
-        cout<<"past or first info: "<<past.data<<endl;
+        *(past.stream) >> line;
+        if (*(past.stream))
+          outQueue.push( MERGE_DATA<T>(line, past.stream, _compareFunction) );
+        //cout<<"past or first info: "<<past.data<<endl;
+        int breakyes=0;
         while (outQueue.empty() == false)
         {
             bool insert=false;
@@ -552,6 +556,8 @@ void FindDup<T>::Merge_Partition() {
               if(past.data.size==curmultiple)
               {
                 lineBuffer.push_back(past.data);
+                cout<<"breaking: "<<itr->second<<endl;
+                breakyes=1;
               }
               break;
             }
@@ -571,14 +577,22 @@ void FindDup<T>::Merge_Partition() {
         //cout<<"all files"<<past.data.size<<" "<<curmultiple<<endl;
         //if((outQueue.empty()) && past.data.size==curmultiple)  ///check if insert is required
         if(past.data.size==curmultiple)  ///check if insert is required
-          { //cout<<itr->second<<" last one:)"<<endl;
+          { cout<<itr->second<<" last one:)"<<endl;
+            if(!breakyes)
             lineBuffer.push_back(past.data);
+
             sort(lineBuffer.begin(),lineBuffer.end());
             WTempfile(lineBuffer, itr->second);
             lineBuffer.clear();
             //cout<<"itr sec: "<<itr->second<<" sizes[itr->second]"<<sizes[itr->second]<<" sizestothread[itr->second]:"<<sizestothread[itr->second]<<endl;
             t[sizestothread[itr->second]]=std::thread(internalhash_calculator<T>,itr->second,sizes[itr->second]);
             indexes.push_back(sizestothread[itr->second]);
+            }
+        else
+            { //cout<<" other :"<<itr->second<<endl;
+              *(past.stream)>>line;
+              if (*(past.stream))
+                outQueue.push( MERGE_DATA<T>(line, past.stream, _compareFunction) );
             }
         }
 
@@ -589,12 +603,13 @@ void FindDup<T>::Merge_Partition() {
         {
           sort(lineBuffer.begin(),lineBuffer.end());
           WTempfile(lineBuffer, itr->second);
-          //cout<<"itr sec: "<<itr->second<<" lines:"<<lineBuffer.size()<<endl;
+          cout<<"itr sec: "<<itr->second<<" lines:"<<lineBuffer.size()<<endl;
           lineBuffer.clear();
 
           t[sizestothread[itr->second]]=std::thread(internalhash_calculator<T>,itr->second,sizes[itr->second]);
           indexes.push_back(sizestothread[itr->second]);
         }
+        cout<<"leaving filemaking"<<itr->second<<"outq size: "<<outQueue.size()<<endl;
         itr++;
         continue;
       }
