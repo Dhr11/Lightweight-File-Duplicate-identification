@@ -66,7 +66,7 @@ public:
 template <class T>
 void internalhash_calculator(string filename,int size)
 {
-  cout<<"enter thread size:"<<size<<" filename: "<<filename<<endl;
+  //cout<<"enter thread size:"<<size<<" filename: "<<filename<<endl;
   ifstream *file;
   stringstream ss2;
   ss2<<"hash"<<filename;
@@ -92,7 +92,7 @@ void internalhash_calculator(string filename,int size)
       }
       prevsize=line.size;
     }
-    cout<<filename<<": cursize:"<<cursize<<endl;
+    //cout<<filename<<": cursize:"<<cursize<<endl;
     (*file).clear();
     (*file).seekg(0,ios::beg);
     while(*file>>line)
@@ -135,7 +135,7 @@ void internalhash_calculator(string filename,int size)
                 *output << past << endl ;
               }
 
-        //      *output << lineBuffer[i] << endl;
+//              *output << lineBuffer[i] << endl;
               past=lineBuffer[i];
           }
           if(curhash.compare(past.hash)==0)
@@ -300,11 +300,11 @@ FindDup<T>::~FindDup(void)
 template <class T>
 void FindDup<T>::Sort() {
     DivideAndSort();
-    int ch=cin.get();
+    //int ch=cin.get();
     if (_tempFileUsed == true)
     {
       Merge_Partition();
-      cout<<"after Merge_Partition()"<<endl;
+      //cout<<"Merge_Partition() done"<<endl;
 
     }
     HashReduce();
@@ -358,7 +358,7 @@ void FindDup<T>::DivideAndSort() {
             totalBytes = 0;
         }
     }
-cout<<"total lines: "<<_count<<endl;
+//cout<<"total lines: "<<_count<<endl;
     // handle the run (if any) from the last chunk of the input file.
     if (lineBuffer.empty() == false) {
         // write the last "chunk" to file if file had to be used
@@ -386,10 +386,6 @@ cout<<"total lines: "<<_count<<endl;
                 sort(lineBuffer.begin(), lineBuffer.end());
             unsigned long int curmultiple(0);
             std::map<unsigned long int, string>::iterator itr = _vHashFileNames.begin();
-            while (itr != _vHashFileNames.end())
-            {
-            T past=lineBuffer[0];
-            vector<T> tmpBuffer;
             map<string,unsigned long int> sizes;
             sizes["smallest"]=0;// full or no hash
             sizes["small"]=5000;//5kb
@@ -403,9 +399,22 @@ cout<<"total lines: "<<_count<<endl;
             sizestothread["moderate"]=2;//800kb
             sizestothread["huge"]=3;//15mb
             sizestothread["humungous"]=4;
+            vector<T> tmpBuffer;
+            size_t i = 1;
+            while (itr != _vHashFileNames.end())
+            {
+            T past=lineBuffer[i-1];
+            if(past.size>itr->first ||i==lineBuffer.size())
+            {
+              itr++;
+              continue;
+            }
+            int breakyes=0;
+            //cout<<"for file: "<<itr->second<<" lineBuffer:"<<lineBuffer.size()<<" i:"<<i<<endl;
 
-            for (size_t i = 1; i < lineBuffer.size(); ++i)
+            for (; i < lineBuffer.size(); ++i)
           {
+            //cout<<lineBuffer[i]<<endl;
             if(lineBuffer[i].size>itr->first)
             {
               if(tmpBuffer.size()>0)
@@ -415,8 +424,11 @@ cout<<"total lines: "<<_count<<endl;
                 t[sizestothread[itr->second]]=std::thread(internalhash_calculator<T>,itr->second,sizes[itr->second]);
                 indexes.push_back(sizestothread[itr->second]);
               }
+              //break;
+              breakyes=1;
               itr++;
-              continue;
+              break;
+              //continue;
             }
             //cout<<lineBuffer[i].size<<" "<<past.size<<endl;
             if((lineBuffer[i].size==past.size) || (past.size==curmultiple))
@@ -428,20 +440,22 @@ cout<<"total lines: "<<_count<<endl;
             past=lineBuffer[i];
 
           }
+          if(!breakyes)
           if(past.size==curmultiple)
           {
             //*_out << past << endl;
             tmpBuffer.push_back(past);
-          }
-          //if(tmpBuffer.size()>0)
-          //{
-          //  WTempfile(tmpBuffer,itr->second);
-          //  tmpBuffer.clear();
-          //  t[sizestothread[itr->second]]=std::thread(internalhash_calculator<T>,itr->second,sizes[itr->second]);
-          //  indexes.push_back(sizestothread[itr->second]);
-          //}
-          itr++;
 
+
+          if(tmpBuffer.size()>0)
+          {
+            WTempfile(tmpBuffer,itr->second);
+            tmpBuffer.clear();
+            t[sizestothread[itr->second]]=std::thread(internalhash_calculator<T>,itr->second,sizes[itr->second]);
+            indexes.push_back(sizestothread[itr->second]);
+          }
+          itr++;
+        }
 
         }
         }
@@ -466,7 +480,7 @@ void FindDup<T>::WTempfile(const vector<T> &lineBuffer,const string name) {
     else
     {
       tempFileName = name;
-      cout<<name<<endl;
+      //cout<<name<<endl;
     }
     ofstream *output;
     output = new ofstream(tempFileName.c_str(), ios::out);
@@ -531,7 +545,7 @@ void FindDup<T>::Merge_Partition() {
 
       if(outQueue.empty())
       {
-        cout<<"leaving filemaking as empty"<<itr->second<<endl;
+        //cout<<"leaving filemaking as empty"<<itr->second<<endl;
         itr++;
 
         continue;
@@ -556,7 +570,7 @@ void FindDup<T>::Merge_Partition() {
               if(past.data.size==curmultiple)
               {
                 lineBuffer.push_back(past.data);
-                cout<<"breaking: "<<itr->second<<endl;
+                //cout<<"breaking: "<<itr->second<<endl;
                 breakyes=1;
               }
               break;
@@ -577,7 +591,7 @@ void FindDup<T>::Merge_Partition() {
         //cout<<"all files"<<past.data.size<<" "<<curmultiple<<endl;
         //if((outQueue.empty()) && past.data.size==curmultiple)  ///check if insert is required
         if(past.data.size==curmultiple)  ///check if insert is required
-          { cout<<itr->second<<" last one:)"<<endl;
+          { //cout<<itr->second<<" last one:)"<<endl;
             if(!breakyes)
             lineBuffer.push_back(past.data);
 
@@ -603,13 +617,13 @@ void FindDup<T>::Merge_Partition() {
         {
           sort(lineBuffer.begin(),lineBuffer.end());
           WTempfile(lineBuffer, itr->second);
-          cout<<"itr sec: "<<itr->second<<" lines:"<<lineBuffer.size()<<endl;
+          //cout<<"itr sec: "<<itr->second<<" lines:"<<lineBuffer.size()<<endl;
           lineBuffer.clear();
 
           t[sizestothread[itr->second]]=std::thread(internalhash_calculator<T>,itr->second,sizes[itr->second]);
           indexes.push_back(sizestothread[itr->second]);
         }
-        cout<<"leaving filemaking"<<itr->second<<"outq size: "<<outQueue.size()<<endl;
+        //cout<<"leaving filemaking"<<itr->second<<"outq size: "<<outQueue.size()<<endl;
         itr++;
         continue;
       }
@@ -647,7 +661,7 @@ template <class T>
 void FindDup<T>::HashReduce () {
 
     for(auto const& value: indexes) {
-      cout<<"join thread:"<<value<<endl;
+      //cout<<"join thread:"<<value<<endl;
       t[value].join();
     }
 }

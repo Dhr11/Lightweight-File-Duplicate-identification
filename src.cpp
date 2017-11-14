@@ -36,17 +36,9 @@ struct fileinfo {
         getline( is,b.path,'\n');
         return is;
     }
-    /*void operator=( const fileinfo &b)
-    {
-        size=b.size;
-        path=b.path;
-        cout<<" used"<<endl;
-    }
-*/
+
 };
 
-
-// comparison function for sorting by chromosome, then by start.
 bool bySize(fileinfo const &a, fileinfo const &b) {
     return (a.size) < (b.size);
 }
@@ -84,10 +76,10 @@ int main(int argc, char* argv[]) {
   		    }
     filemapping->close();
 
-    ostream *output;
-    output = new ofstream("shortedLess.fileinfo", ios::out);
+    //ostream *output;
+    //output = new ofstream("shortedLess.fileinfo", ios::out);
 
-    FindDup<fileinfo> *filesize_sorter = new FindDup<fileinfo> (inFile,output,bySize,bufferSize,tempPath);
+    FindDup<fileinfo> *filesize_sorter = new FindDup<fileinfo> (inFile,NULL,bySize,bufferSize,tempPath);
     filesize_sorter->Sort();
 
 }
